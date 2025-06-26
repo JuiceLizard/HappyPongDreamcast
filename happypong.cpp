@@ -49,7 +49,7 @@ int player_vy = 0;
 int player_timeoutmax = 220;
 int player_timeout = 0;
 float player_bump = 0;
-int playerMode = 1; // 1 buttons, 2 stick or 3 trigger
+int playerMode = 2; // 1 buttons, 2 stick or 3 trigger
 float previous_player_y = 208;
 //bool playerEffect = false;
 
@@ -66,7 +66,8 @@ int opponent_vy = 0;
 int opponent_timeoutmax = 220;
 int opponent_timeout = 0;
 float opponent_bump = 0;
-int opponentMode = 1; // 1 buttons, 2 stick or 3 trigger
+int opponentMode = 2; // 1 buttons, 2 stick or 3 trigger
+bool leftStickSecondPad = true;
 float previous_opponent_y = 208;
 //bool opponentEffect = false;
 
@@ -76,6 +77,9 @@ float ball_size = 24;
 float ball_x = 84;
 //float ball_y = (GetScreenHeight() - ball_size) / 2;
 float ball_y = 228;
+
+float fake_ball_y = 228;
+int fake_ball_vy = 0;
 
 int ball_vx = 8;
 int ball_vy = 0;
@@ -89,8 +93,11 @@ float starColor = 0; // 0 yellow, 1 orange, 2 red, 3 blue, 4 green
 
 int specialScore = 0;
 
-bool specialMove = false;
-int dash_vx = 6;
+int specialMove = 0; // 0 no special move, 1 dash, 2 stealth, 3 glue, 4 split
+int dash_vx = 0;
+unsigned char starStealth = 255;
+int transparencyCounter = 0;
+int fakeStarUp = 1;
 
 //bool endEffect = false;
 
@@ -136,6 +143,24 @@ bool twoControllers = false;
 //Rectangle rec_opponent = {opponent_x, opponent_y, opponent_w, opponent_h};
 
 // the functions
+
+void resetSpecialMove() {
+  specialMove = 0;
+  dash_vx = 0;
+  starStealth = 255;
+  transparencyCounter = 0;
+}
+
+void setSpecialMove() {
+  switch (specialMove) {
+    case 1:
+      dash_vx = 6;
+    break;
+    case 2:
+      transparencyCounter = 4;
+    break;
+  }
+}
 
 void checkPlayerButtons() {
   // up and down from left D-pad
@@ -246,15 +271,20 @@ void colorTheStar() {
 }
 
 void checkOpponentButtons() {
-  if(twoControllers == true) {
+  if(twoControllers == true) { // second pad
     // buttons Y and A (Dreamcast or XBOX buttons positions)
     if((IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_UP)) || (IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))) {
       opponentMode = 1;
       opponent_timeout = opponent_timeoutmax;
     }
-    // right stick
+    // right stick or second controller left stick
     if((GetGamepadAxisMovement(1, GAMEPAD_AXIS_RIGHT_Y) < -0.2) || (GetGamepadAxisMovement(1, GAMEPAD_AXIS_RIGHT_Y) > 0.2)) {
       opponentMode = 2;
+      leftStickSecondPad = false;
+      opponent_timeout = opponent_timeoutmax;
+    } else if((GetGamepadAxisMovement(1, GAMEPAD_AXIS_LEFT_Y) < -0.2) || (GetGamepadAxisMovement(1, GAMEPAD_AXIS_LEFT_Y) > 0.2)) {
+      opponentMode = 2;
+      leftStickSecondPad = true;
       opponent_timeout = opponent_timeoutmax;
     }
     // right trigger
@@ -264,7 +294,7 @@ void checkOpponentButtons() {
     }
 
   } else {
-    
+    // first pad
     // buttons Y and A (Dreamcast or XBOX buttons positions)
     if((IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) || (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))) {
       opponentMode = 1;
@@ -312,14 +342,20 @@ void moveOpponent() {
       }
     break;
 
-  // right stick control (yes)
+  // stick control
     case 2:
-      if(twoControllers == true) {
+      if(twoControllers == true) { // second pad
         previous_opponent_y = opponent_y;
         //opponent_y = (480 - opponent_h)/2 + (GetGamepadAxisMovement(1, GAMEPAD_AXIS_RIGHT_Y)) * 240;
-        opponent_y = ((480 - opponent_h)/2 + (GetGamepadAxisMovement(1, GAMEPAD_AXIS_RIGHT_Y)) * 240 + previous_opponent_y) / 2;
+        
+        if(leftStickSecondPad == true) {
+          opponent_y = ((480 - opponent_h)/2 + (GetGamepadAxisMovement(1, GAMEPAD_AXIS_LEFT_Y)) * 240 + previous_opponent_y) / 2;
+        } else {
+          opponent_y = ((480 - opponent_h)/2 + (GetGamepadAxisMovement(1, GAMEPAD_AXIS_RIGHT_Y)) * 240 + previous_opponent_y) / 2;
+        }
+
         opponent_vy = opponent_y - previous_opponent_y;
-      } else {
+      } else { // first pad
         previous_opponent_y = opponent_y;
         //opponent_y = (480 - opponent_h)/2 + (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_Y)) * 240;
         opponent_y = ((480 - opponent_h)/2 + (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_Y)) * 240 + previous_opponent_y) / 2;
@@ -387,17 +423,39 @@ void updateCollisions() {
   //collision with the top border
   if (ball_y < 0) {
     ball_y = 0;
-    ball_vy = -ball_vy;
-  //  PlaySound(poc);
+    if(specialMove == 3) {
+      ball_vy = 0;
+    } else {
+      ball_vy = -ball_vy;
+    }
+      //  PlaySound(poc);
   }
 
   //collision with the bottom border
   if ((ball_y + ball_size) > 480) {
     ball_y = 480 - ball_size;
-    ball_vy = -ball_vy;
-  //  PlaySound(poc);
+    if(specialMove == 3) {
+      ball_vy = 0;
+    } else {
+      ball_vy = -ball_vy;
+    }
+  
+    //  PlaySound(poc);
   }
 
+  // fake ball collisions
+    if(specialMove == 4) {
+    // top border
+    if(fake_ball_y < 0) {
+      fake_ball_y = 0;
+      fake_ball_vy = -fake_ball_vy;
+    }
+    // bottom border
+    if(fake_ball_y + ball_size > 480) {
+      fake_ball_y = 480 - ball_size;
+      fake_ball_vy = -fake_ball_vy;
+    }
+  }
 
   //collision with the player
   if((ball_x + ball_size > player_x) && (ball_x < player_x + player_w) &&
@@ -406,91 +464,78 @@ void updateCollisions() {
     ball_vx = -ball_vx;
     
     previous_ball_vy = ball_vy;
-
-    //add some effet to the ball
-    ball_vy += player_vy / 2;
-
-    // check if the player gives speed up effect to the ball
-    /*
-    if(previous_ball_vy == 0) {
-      if(ball_vy != previous_ball_vy) {
-        playerEffects = playerEffects + 1;
-      }
-    } else if(previous_ball_vy > 0) {
-      if(ball_vy > previous_ball_vy) {
-        playerEffects = playerEffects + 1;
-      }
-    } else {
-      if(ball_vy < previous_ball_vy) {
-        playerEffects = playerEffects + 1;
-      }
-    }
-    */
-
-    /*
-    if(previous_ball_vy == 0) {
-      if(ball_vy != previous_ball_vy) {
-        playerEffect = true;
-      } else {
-        playerEffect = false;
-      }
-    } else if(previous_ball_vy > 0) {
-      if(ball_vy > previous_ball_vy) {
-        playerEffect = true;
-      } else {
-        playerEffect = false;
-      }
-    } else {
-      if(ball_vy < previous_ball_vy) {
-        playerEffect = true;
-      } else {
-        playerEffect = false;
-      }
-    }
-    */
-
-    /*
-    if(playerEffect == true) {
-      switch (playerMode) {
-        case 1:
-          starColor = 4; // green
-        break;
-        case 2:
-          starColor = 3; // blue
-        break;
-        case 3:
-          starColor = 2; // red
-        break;
-      }
-    } else {
-      starColor = 0; // yellow
-    }
-    */
-
-    // last effect
-    //if(playerEffects > 6) {
-    //  playerEffects = 6;
-    //}
     
-    specialMove = false;
+    resetSpecialMove();
 
-    if(playerMode == 2) {
+    if(playerMode == 2) { // stick
       specialScore = specialScore - 1;
       if(specialScore < -2) {
         specialScore = 0;
-        specialMove = true;
+        specialMove = GetRandomValue(1, 4);
+        setSpecialMove();
       }
     }
 
-    if(playerMode == 3) {
+    if(playerMode == 3) { // trigger
       specialScore = specialScore - 2;
       if(specialScore < -2) {
         specialScore = 0;
-        specialMove = true;
+        specialMove = GetRandomValue(1, 4);
+        setSpecialMove();
+      }
+    }
+
+    if(player_timeout < 1) { // computer control
+      switch (opponent_score) {
+        case 2:
+          specialScore = specialScore - GetRandomValue(0, 1);
+        break;
+        case 3:
+          specialScore = specialScore - GetRandomValue(0, 1);
+        break;
+        case 4:
+          specialScore = specialScore - GetRandomValue(0, 2);
+        break;
+        case 5:
+          specialScore = specialScore - GetRandomValue(0, 2);
+        break;
+        case 6:
+          specialScore = specialScore - GetRandomValue(1, 2);
+        break;
+        case 7:
+          specialScore = specialScore - GetRandomValue(1, 2);
+        break;
+        case 8:
+          specialScore = specialScore - 2;
+        break;
+        case 9:
+          specialScore = specialScore - 2;
+        break;
+      }
+      
+      if(specialScore < -2) {
+        specialScore = 0;
+        specialMove = GetRandomValue(1, 4);
+        setSpecialMove();
       }
     }
 
     colorTheStar();
+
+    //add some effet to the ball
+    if(specialMove == 4) {
+      fake_ball_y = ball_y;
+      fakeStarUp = GetRandomValue(1, 2);
+      if(fakeStarUp == 1) {
+        ball_vy += player_vy / 2;
+        fake_ball_vy = ball_vy + 2;
+      } else {
+        ball_vy += player_vy / 2;
+        fake_ball_vy = ball_vy - 2;
+      }
+    } else {
+      ball_vy += player_vy / 2;
+    }
 
     // limit the vertical speed of the ball
     if(ball_vy < (-ball_vymax)) {
@@ -501,8 +546,6 @@ void updateCollisions() {
     }
 
   // PlaySound(rebond_ballon);
-
-    //endEffect = false;
 
   }
 
@@ -512,93 +555,83 @@ void updateCollisions() {
     ball_x = opponent_x - ball_size;
     ball_vx = -ball_vx;
 
-   previous_ball_vy = ball_vy;
-
-    //add some effet to the ball
-    ball_vy += opponent_vy / 2;
-
-    // check if the opponent gives speed up effect to the ball
-    /*
-    if(previous_ball_vy == 0) {
-      if(ball_vy != previous_ball_vy) {
-        opponentEffects = opponentEffects + 1;
-      }
-    } else if(previous_ball_vy > 0) {
-      if(ball_vy > previous_ball_vy) {
-        opponentEffects = opponentEffects + 1;
-      }
-    } else {
-      if(ball_vy < previous_ball_vy) {
-        opponentEffects = opponentEffects + 1;
-      }
-    }
-    */
-
-    /*
-    if(previous_ball_vy == 0) {
-      if(ball_vy != previous_ball_vy) {
-        opponentEffect = true;
-      } else {
-        opponentEffect = false;
-      }
-    } else if(previous_ball_vy > 0) {
-      if(ball_vy > previous_ball_vy) {
-        opponentEffect = true;
-      } else {
-        opponentEffect = false;
-      }
-    } else {
-      if(ball_vy < previous_ball_vy) {
-        opponentEffect = true;
-      } else {
-        opponentEffect = false;
-      }
-    }
-    */
-
-    /*
-    if(opponentEffect == true) {
-      switch (opponentMode) {
-        case 1:
-          starColor = 4; // green
-        break;
-        case 2:
-          starColor = 3; // blue
-        break;
-        case 3:
-          starColor = 2; // red
-        break;
-      }
-    } else {
-      starColor = 0; // yellow
-    }
-    */
+    previous_ball_vy = ball_vy;
 
 
-    // last effect
-    //if(opponentEffects > 6) {
-    //  opponentEffects = 6;
-    //}
+    resetSpecialMove();
 
-    specialMove = false;
-
-    if(opponentMode == 2) {
+    if(opponentMode == 2) { // stick
       specialScore = specialScore + 1;
       if(specialScore > 2) {
         specialScore = 0;
-        specialMove = true;
+        specialMove = GetRandomValue(1, 4);
+      //  specialMove = 4;
+        setSpecialMove();
       }
     }
 
-    if(opponentMode == 3) {
+    if(opponentMode == 3) { // trigger
       specialScore = specialScore + 2;
       if(specialScore > 2) {
         specialScore = 0;
-        specialMove = true;
+        specialMove = GetRandomValue(1, 4);
+      //  specialMove = 4;
+        setSpecialMove();
+      }
+    }
+
+    if(opponent_timeout < 1) { // computer control
+
+      switch (player_score) {
+        case 2:
+          specialScore = specialScore + GetRandomValue(0, 1);
+        break;
+        case 3:
+          specialScore = specialScore + GetRandomValue(0, 1);
+        break;
+        case 4:
+          specialScore = specialScore + GetRandomValue(0, 2);
+        break;
+        case 5:
+          specialScore = specialScore + GetRandomValue(0, 2);
+        break;
+        case 6:
+          specialScore = specialScore + GetRandomValue(1, 2);
+        break;
+        case 7:
+          specialScore = specialScore + GetRandomValue(1, 2);
+        break;
+        case 8:
+          specialScore = specialScore + 2;
+        break;
+        case 9:
+          specialScore = specialScore + 2;
+        break;
+      }
+
+      if(specialScore > 2) {
+        specialScore = 0;
+        specialMove = GetRandomValue(1, 4);
+        setSpecialMove();
       }
     }
 
     colorTheStar();
+
+    //add some effet to the ball
+    if(specialMove == 4) {
+      fake_ball_y = ball_y;
+      fakeStarUp = GetRandomValue(1, 2);
+      if(fakeStarUp == 1) {
+        ball_vy += opponent_vy / 2;
+        fake_ball_vy = ball_vy + 2;
+      } else {
+        ball_vy += opponent_vy / 2;
+        fake_ball_vy = ball_vy - 2;
+      }
+    } else {
+      ball_vy += opponent_vy / 2;
+    }
 
     // limit the vertical speed of the ball
     if(ball_vy < (-ball_vymax)) {
@@ -610,16 +643,11 @@ void updateCollisions() {
 
   // PlaySound(rebond_ballon);
 
-    //endEffect = false;
-
   }
 
 //collision with the left side
   if (ball_x < 0) {
     opponent_score = opponent_score + 1;
-
-   // playerEffect = false;
-   // opponentEffect = false;
 
 // opponent score bumps
     numberBump2 = 4;   
@@ -637,16 +665,13 @@ void updateCollisions() {
     specialScore = 0;
     colorTheStar();
 
-    specialMove = false;
+    resetSpecialMove();
   }
 
 //collision with the right side
   //if ((ball_x + ball_size) > GetScreenWidth()) {
   if ((ball_x + ball_size) > 640) {
     player_score = player_score + 1;
-
-  //  playerEffect = false;
-  //  opponentEffect = false;
     
 // player score bumps
     numberBump1 = 4;
@@ -664,7 +689,7 @@ void updateCollisions() {
     specialScore = 0;
     colorTheStar();
 
-    specialMove = false;
+    resetSpecialMove();
   }
 }
 
@@ -775,12 +800,22 @@ void drawStar() {
     star_number = 3;
   }
 
+  if((specialMove == 2) && (starStealth > 3)) {
+    starStealth = starStealth - transparencyCounter;
+  }
+
+  // draw the fake star if special move SPLIT
+  if(specialMove == 4) {
+    DrawTexturePro(sevenStars512x512, {0, 0, 72, 72}, {(float)ball_x - 24, (float)fake_ball_y - 24, 72, 72}, {0, 0}, 0, WHITE);
+  }
+
   //DrawTexturePro(star128x512, {0, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, WHITE);
   if(ball_vx > 0) {
-    DrawTexturePro(sevenStars512x512, {starColor*72, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, WHITE);
+    DrawTexturePro(sevenStars512x512, {starColor*72, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, {255, 255, 255, starStealth});
   } else {
-    DrawTexturePro(sevenStars512x512, {starColor*72, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, WHITE);
+    DrawTexturePro(sevenStars512x512, {starColor*72, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, {255, 255, 255, starStealth});
   }
+
   //DrawRectangle(ball_x - 24, ball_y - 24, 72, 72, WHITE);
   //DrawCircle(ball_x + 12, ball_y + 12, 32, BLUE);
 
@@ -978,7 +1013,8 @@ void resetValues() {
       //endEffect = false;
       starColor = 0;
       specialScore = 0;
-      specialMove = false;
+      
+      resetSpecialMove();
 }
 
 
@@ -1059,16 +1095,15 @@ int main() {
     moveOpponent();
 
     //move the ball
-    if(specialMove == true) {
-      if(ball_vx > 0) {
-        ball_x = ball_x + ball_vx + dash_vx;
-      } else {
-        ball_x = ball_x + ball_vx - dash_vx;
-      }
+    if(ball_vx > 0) {
+      ball_x = ball_x + ball_vx + dash_vx;
     } else {
-      ball_x = ball_x + ball_vx;
+      ball_x = ball_x + ball_vx - dash_vx;
     }
+
     ball_y = ball_y + ball_vy;
+
+    fake_ball_y = fake_ball_y + fake_ball_vy;
 
     /*
     if(endEffect == false) {
