@@ -3,7 +3,15 @@
         {
             "name": "Mac",
             "includePath": [
-                "/opt/toolchains/dc/kos-ports/raylib4dc/inst/include"
+                "/opt/toolchains/dc/kos-ports/raylib4dc/inst/include/**",
+                "/opt/toolchains/dc/kos/include/**",
+                "/opt/toolchains/dc/kos/kernel/arch/dreamcast/include/**",
+                "/opt/toolchains/dc/sh-elf/sh-elf/include/**",
+                "/opt/toolchains/dc/kos/include/**",
+                "/opt/toolchains/dc/kos/kernel/arch/dreamcast/include/**",
+                "/opt/toolchains/dc/kos/addons/include/**",
+                "/opt/toolchains/dc/kos-ports/**",
+                "${workspaceFolder}/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
