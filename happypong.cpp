@@ -1,14 +1,81 @@
 #include <iostream>
 #include <raylib.h>
 #include <math.h>
+#include <kos.h>
+#include <dc/sound/sound.h>
+#include <dc/sound/sfxmgr.h>
+
+#include <sys/cdefs.h>
+#include <arch/types.h>
+#include <dc/maple.h>
+#include <dc/maple/controller.h>
+
+#include <dc/maple/vmu.h>
+#include <dc/vmu_fb.h>
+#include <dc/video.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <kos/init.h>
+#include <dc/fmath.h>
+#include <arch/arch.h>
 
 using namespace std;
 
+// VMU stuff
 /*
-Sound rebond_ballon = {0};
-Sound petit_chat = {0};
-Sound Chouette = {0};
+static const char badger[] = {
+    0b00000000000000000000000000000000,
+    0b00000000000000000000000000000000,
+    0b00000000000000000000000000000000,
+    0b00000000000000000000000000000000,
+    0b00111111111100000000111111111100,
+    0b00111111111100000000111111111100,
+    0b00110000001111000011110000001100,
+    0b00110000001111000011110000001100,
+    0b00110011110011000011001111001100,
+    0b00110011110011000011001111001100,
+    0b00110011110011111111001111001100,
+    0b00110011110011111111001111001100,
+    0b00111100111111000011111100111100,
+    0b00111100111111000011111100111100,
+    0b00110000111111000011111100001100,
+    0b00110000111111000011111100001100,
+    0b00110000110011000011001100001100,
+    0b00110000110011000011001100001100,
+    0b00111100001111000011110000111100,
+    0b00111100001111000011110000111100,
+    0b00001111000000000000000011110000,
+    0b00001111000000000000000011110000,
+    0b00000011110011111111001111000000,
+    0b00000011110011111111001111000000,
+    0b00000000111100111100111100000000,
+    0b00000000111100111100111100000000,
+    0b00000000001111111111110000000000,
+    0b00000000001111111111110000000000,
+    0b00000000000000000000000000000000,
+    0b00000000000000000000000000000000,
+    0b00000000000000000000000000000000,
+    0b00000000000000000000000000000000,
+};
 */
+
+static vmufb_t vmufb;
+
+maple_device_t *dev;
+unsigned int vmu;
+
+
+sfxhnd_t poc = {0};
+sfxhnd_t bim = {0};
+sfxhnd_t woosh = {0};
+sfxhnd_t dash = {0};
+sfxhnd_t split = {0};
+sfxhnd_t glue = {0};
+sfxhnd_t ghost = {0};
+sfxhnd_t paw = {0};
+sfxhnd_t pawpawpaw = {0};
+sfxhnd_t happypong = {0};
+sfxhnd_t ronron = {0};
 
 Texture2D zero64x64 = {0};
 Texture2D one64x64 = {0};
@@ -26,14 +93,19 @@ Texture2D rabbit_eyes = {0};
 Texture2D rabbitHeart = {0};
 Texture2D right_paw = {0};
 Texture2D spark = {0};
-//Texture2D star128x512 = {0};
 Texture2D sevenStars512x512 = {0};
-//Texture2D you_lose256x256 = {0};
-//Texture2D you_win256x256 = {0};
-
 Texture2D credits512x64 = {0};
 Texture2D QRCodeNB64x64 = {0};
 Texture2D pinkCorners = {0};
+Texture2D H128x128 = {0};
+Texture2D A128x256 = {0};
+Texture2D Pa128x256 = {0};
+Texture2D Pb128x256 = {0};
+Texture2D Y128x256 = {0};
+Texture2D Pc128x256 = {0};
+Texture2D O128x128 = {0};
+Texture2D N128x128 = {0};
+Texture2D G128x128 = {0};
 
 // Les variables
 
@@ -92,8 +164,10 @@ int previous_ball_vy = 0;
 float starColor = 0; // 0 yellow, 1 orange, 2 red, 3 blue, 4 green
 
 int specialScore = 0;
+int previousSpecialScore = 0;
+int pocBimWoosh = 0;
 
-int specialMove = 0; // 0 no special move, 1 dash, 2 stealth, 3 glue, 4 split
+int specialMove = 0; // 0 no special move, 1 dash, 2 ghost, 3 glue, 4 split
 int dash_vx = 0;
 unsigned char starStealth = 255;
 int transparencyCounter = 0;
@@ -138,9 +212,36 @@ float win_size = 0;
 
 bool twoControllers = false;
 
-//Rectangle rec_ball = {ball_x, ball_y, ball_size, ball_size};
-//Rectangle rec_player = {player_x, player_y, player_w, player_h};
-//Rectangle rec_opponent = {opponent_x, opponent_y, opponent_w, opponent_h};
+int ronron_loop_channel = -1;
+
+// title letters animation
+const int letterSizeMax = 12;
+float Hsize = 0;
+float Hspeed = 0;
+float Asize = 0;
+float Aspeed = 0;
+float Pasize = 0;
+float Paspeed = 0;
+float Pbsize = 0;
+float Pbspeed = 0;
+float Ysize = 0;
+float Yspeed = 0;
+float Pcsize = 0;
+float Pcspeed = 0;
+float Osize = 0;
+float Ospeed = 0;
+float Nsize = 0;
+float Nspeed = 0;
+float Gsize = 0;
+float Gspeed = 0;
+
+int letterCounter = 0;
+const int letterSpeed = 2;
+const int letterDelay = 5;
+
+int vmuPaws = 1;
+int pawsCounter = 1;
+
 
 // the functions
 
@@ -174,7 +275,6 @@ void checkPlayerButtons() {
     player_timeout = player_timeoutmax;
   }
   // left trigger
-  //if(GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_TRIGGER) > -0.8) {
   if(GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_TRIGGER) > 0.2) {
     playerMode = 3;
     player_timeout = player_timeoutmax;
@@ -194,21 +294,19 @@ void movePlayer() {
       player_vy -= 4;
     } else if(IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
       player_vy += 4;
-    } else if (player_timeout > 0) {
+    } else if(player_timeout > 0) {
       player_vy = player_vy / 2;
     }
     break;
     // left stick control
     case 2:
     previous_player_y = player_y;
-    //player_y = (480 - player_h)/2 + (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y)) * 240;
     player_y = ((480 - player_h)/2 + (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y)) * 240 + previous_player_y) / 2;
     player_vy = player_y - previous_player_y;
     break;
     // left trigger control
     case 3:
     previous_player_y = player_y;
-    //player_y = (-player_h)/2 + (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_TRIGGER)) * 480;
     player_y = ((-player_h)/2 + (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_TRIGGER)) * 480 + previous_player_y) / 2;
     player_vy = player_y - previous_player_y;
     break;
@@ -217,7 +315,7 @@ void movePlayer() {
   //computer control after timeout
   if (player_timeout > 0) {
     player_timeout--;
-  } else if ((player_y + (player_h / 2)) < (ball_y + (ball_size / 2))) { //if the ball is below the opponent
+  } else if((player_y + (player_h / 2)) < (ball_y + (ball_size / 2))) { //if the ball is below the opponent
     player_vy = player_vy + 4; // accelerate down
     playerMode = 1;
   } else {
@@ -326,17 +424,17 @@ void moveOpponent() {
       if(twoControllers == true) {
         if(IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_UP)) {
           opponent_vy -= 4;
-        } else if (IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {  
+        } else if(IsGamepadButtonDown(1, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {  
           opponent_vy += 4;
-        } else if (opponent_timeout > 0) {
+        } else if(opponent_timeout > 0) {
           opponent_vy = opponent_vy / 2;
         }
       } else {
         if(IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) {
           opponent_vy -= 4;
-        } else if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {  
+        } else if(IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {  
           opponent_vy += 4;
-        } else if (opponent_timeout > 0) {
+        } else if(opponent_timeout > 0) {
           opponent_vy = opponent_vy / 2;
         }
       }
@@ -346,7 +444,6 @@ void moveOpponent() {
     case 2:
       if(twoControllers == true) { // second pad
         previous_opponent_y = opponent_y;
-        //opponent_y = (480 - opponent_h)/2 + (GetGamepadAxisMovement(1, GAMEPAD_AXIS_RIGHT_Y)) * 240;
         
         if(leftStickSecondPad == true) {
           opponent_y = ((480 - opponent_h)/2 + (GetGamepadAxisMovement(1, GAMEPAD_AXIS_LEFT_Y)) * 240 + previous_opponent_y) / 2;
@@ -357,7 +454,6 @@ void moveOpponent() {
         opponent_vy = opponent_y - previous_opponent_y;
       } else { // first pad
         previous_opponent_y = opponent_y;
-        //opponent_y = (480 - opponent_h)/2 + (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_Y)) * 240;
         opponent_y = ((480 - opponent_h)/2 + (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_Y)) * 240 + previous_opponent_y) / 2;
         opponent_vy = opponent_y - previous_opponent_y;
       }
@@ -367,12 +463,10 @@ void moveOpponent() {
     case 3:
       if(twoControllers == true) {
         previous_opponent_y = opponent_y;
-        //opponent_y = (-opponent_h)/2 + (GetGamepadAxisMovement(1, GAMEPAD_AXIS_RIGHT_TRIGGER)) * 480;
         opponent_y = ((-opponent_h)/2 + (GetGamepadAxisMovement(1, GAMEPAD_AXIS_RIGHT_TRIGGER)) * 480 + previous_opponent_y) / 2;
         opponent_vy = opponent_y - previous_opponent_y;
       } else {
         previous_opponent_y = opponent_y;
-        //opponent_y = (-opponent_h)/2 + (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_TRIGGER)) * 480;
         opponent_y = ((-opponent_h)/2 + (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_TRIGGER)) * 480 + previous_opponent_y) / 2;
         opponent_vy = opponent_y - previous_opponent_y;
       }
@@ -428,7 +522,8 @@ void updateCollisions() {
     } else {
       ball_vy = -ball_vy;
     }
-      //  PlaySound(poc);
+    //  PlaySound(poc);
+    snd_sfx_play(poc, 128, (int)(ball_x/2.4));
   }
 
   //collision with the bottom border
@@ -440,7 +535,8 @@ void updateCollisions() {
       ball_vy = -ball_vy;
     }
   
-    //  PlaySound(poc);
+    // star collision sound
+    snd_sfx_play(poc, 128, (int)(ball_x/2.4));
   }
 
   // fake ball collisions
@@ -486,6 +582,9 @@ void updateCollisions() {
     }
 
     if(player_timeout < 1) { // computer control
+
+      previousSpecialScore = specialScore;
+
       switch (opponent_score) {
         case 2:
           specialScore = specialScore - GetRandomValue(0, 1);
@@ -512,7 +611,9 @@ void updateCollisions() {
           specialScore = specialScore - 2;
         break;
       }
-      
+
+      pocBimWoosh = previousSpecialScore - specialScore;
+
       if(specialScore < -2) {
         specialScore = 0;
         specialMove = GetRandomValue(1, 4);
@@ -545,8 +646,48 @@ void updateCollisions() {
       ball_vy = ball_vymax;
     }
 
-  // PlaySound(rebond_ballon);
-
+    // star collision sound
+    switch (specialMove) {
+      case 0:
+        switch (playerMode) {
+          case 1:
+            if(player_timeout > 0) {
+              snd_sfx_play(poc, 128, 22);
+            } else {
+              switch (pocBimWoosh) {
+                case 0:
+                  snd_sfx_play(poc, 128, 22);
+                break;
+                case 1:
+                  snd_sfx_play(bim, 128, 22);
+                break;
+                case 2:
+                  snd_sfx_play(woosh, 128, 22);
+                break;
+              }
+            }
+            break;
+          case 2:
+            snd_sfx_play(bim, 128, 22);
+          break;
+            case 3:
+            snd_sfx_play(woosh, 128, 22);
+          break;
+        }
+      break;
+      case 1:
+        snd_sfx_play(dash, 128, 22);
+      break;
+      case 2:
+        snd_sfx_play(ghost, 128, 22);
+      break;
+      case 3:
+        snd_sfx_play(glue, 128, 22);
+      break;
+      case 4:
+        snd_sfx_play(split, 128, 22);
+      break;
+    }
   }
 
 //collision with the opponent
@@ -565,7 +706,6 @@ void updateCollisions() {
       if(specialScore > 2) {
         specialScore = 0;
         specialMove = GetRandomValue(1, 4);
-      //  specialMove = 4;
         setSpecialMove();
       }
     }
@@ -575,12 +715,13 @@ void updateCollisions() {
       if(specialScore > 2) {
         specialScore = 0;
         specialMove = GetRandomValue(1, 4);
-      //  specialMove = 4;
         setSpecialMove();
       }
     }
 
     if(opponent_timeout < 1) { // computer control
+
+      previousSpecialScore = specialScore;
 
       switch (player_score) {
         case 2:
@@ -608,6 +749,8 @@ void updateCollisions() {
           specialScore = specialScore + 2;
         break;
       }
+
+      pocBimWoosh = specialScore - previousSpecialScore;
 
       if(specialScore > 2) {
         specialScore = 0;
@@ -641,8 +784,49 @@ void updateCollisions() {
       ball_vy = ball_vymax;
     }
 
-  // PlaySound(rebond_ballon);
+  // star collision sound
 
+    switch (specialMove) {
+      case 0:
+        switch (opponentMode) {
+          case 1:
+            if(opponent_timeout > 0) {
+              snd_sfx_play(poc, 128, 233);
+            } else {
+              switch (pocBimWoosh) {
+                case 0:
+                  snd_sfx_play(poc, 128, 233);
+                break;
+                case 1:
+                  snd_sfx_play(bim, 128, 233);
+                break;
+                case 2:
+                  snd_sfx_play(woosh, 128, 233);
+                break;
+              }
+            }
+          break;
+          case 2:
+            snd_sfx_play(bim, 128, 233);
+          break;
+          case 3:
+            snd_sfx_play(woosh, 128, 233);
+          break;
+        }
+      break;
+      case 1:
+        snd_sfx_play(dash, 128, 233);
+      break;
+      case 2:
+        snd_sfx_play(ghost, 128, 233);
+      break;
+      case 3:
+        snd_sfx_play(glue, 128, 233);
+      break;
+      case 4:
+        snd_sfx_play(split, 128, 233);
+      break;
+    }
   }
 
 //collision with the left side
@@ -653,7 +837,8 @@ void updateCollisions() {
     numberBump2 = 4;   
     
     if(opponent_score < 10) {
-    //  PlaySound(petit_chat);
+    //  one point sound
+      snd_sfx_play(paw, 128, 0);
     }
 
     ball_x = opponent_x - 16;
@@ -677,7 +862,8 @@ void updateCollisions() {
     numberBump1 = 4;
 
     if(player_score < 10) {
-    //  PlaySound(petit_chat);
+    //  one point sound
+      snd_sfx_play(paw, 128, 255);
     }
 
     ball_x = player_x + player_w + 20;
@@ -804,7 +990,7 @@ void drawStar() {
     starStealth = starStealth - transparencyCounter;
   }
 
-  // draw the fake star if special move SPLIT
+  // draw the fake star if special move is SPLIT
   if(specialMove == 4) {
     DrawTexturePro(sevenStars512x512, {0, 0, 72, 72}, {(float)ball_x - 24, (float)fake_ball_y - 24, 72, 72}, {0, 0}, 0, WHITE);
   }
@@ -815,9 +1001,6 @@ void drawStar() {
   } else {
     DrawTexturePro(sevenStars512x512, {starColor*72, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, {255, 255, 255, starStealth});
   }
-
-  //DrawRectangle(ball_x - 24, ball_y - 24, 72, 72, WHITE);
-  //DrawCircle(ball_x + 12, ball_y + 12, 32, BLUE);
 
 //loop the retate counter from 0 to 4
   rotate_counter = rotate_counter + 1;
@@ -972,8 +1155,6 @@ void draw() {
 
   DrawTexturePro(right_paw, {0, 0, 104, 152}, {opponent_x - 48 + opponent_bump, opponent_y - 20, 104, 152}, {0, 0}, 0, WHITE);
 
-  //DrawRectangle(opponent_x, opponent_y, opponent_w, opponent_h, WHITE);
-
   //draw the ball
 
   drawStar();
@@ -981,61 +1162,263 @@ void draw() {
   //draw the player
 
   DrawTexturePro(left_paw, {0, 0, 104, 152}, {player_x - 48 + player_bump, player_y - 20, 104, 152}, {0, 0}, 0, WHITE);
-  
-  //DrawRectangle(player_x, player_y, player_w, player_h, WHITE);
+}
 
+void resetTitleAnim() {
+  Hsize = 0;
+  Hspeed = 0;
+  Asize = 0;
+  Aspeed = 0;
+  Pasize = 0;
+  Paspeed = 0;
+  Pbsize = 0;
+  Pbspeed = 0;
+  Ysize = 0;
+  Yspeed = 0;
+  Pcsize = 0;
+  Pcspeed = 0;
+  Osize = 0;
+  Ospeed = 0;
+  Nsize = 0;
+  Nspeed = 0;
+  Gsize = 0;
+  Gspeed = 0;
 
-// test affichage rectangles player et opponent
-//  DrawRectangle(player_x, player_y, player_w, player_h, GREEN);
-//  DrawRectangle(opponent_x, opponent_y, opponent_w, opponent_h, RED);
-//  DrawRectangle(ball_x, ball_y, ball_size, ball_size, BLUE);
+ letterCounter = 0;
 }
 
 void resetValues() {
-      player_score = 0;
-      opponent_score = 0;
-      player_y = 208;
-      opponent_y = 208;
-      player_vy = 0;
-      player_timeout = 0;
-      player_bump = 0;
-      opponent_vy = 0;
-      opponent_timeout = 0;
-      opponent_bump = 0;
-      ball_x = 84;
-      ball_y = 228;
-      ball_vx = 8;
-      ball_vy = 0;
-      playerMode = 1;
-      opponentMode = 1;
-      //playerEffect = false;
-      //opponentEffect = false;
-      //endEffect = false;
-      starColor = 0;
-      specialScore = 0;
+  player_score = 0;
+  opponent_score = 0;
+  player_y = 208;
+  opponent_y = 208;
+  player_vy = 0;
+  player_timeout = 0;
+  player_bump = 0;
+  opponent_vy = 0;
+  opponent_timeout = 0;
+  opponent_bump = 0;
+  ball_x = 84;
+  ball_y = 228;
+  ball_vx = 8;
+  ball_vy = 0;
+  playerMode = 1;
+  opponentMode = 1;
+  starColor = 0;
+  specialScore = 0;
+  previousSpecialScore = 0;
+  pocBimWoosh = 0;
       
-      resetSpecialMove();
+  resetSpecialMove();
+
+  resetTitleAnim();
+
+}
+
+void changeLettersSize() {
+
+  // frame counter
+  letterCounter = letterCounter + 1;
+  if(letterCounter > 150) {
+    letterCounter = 0;
+  }
+  
+  // letter H
+  if(letterCounter == letterDelay) {
+    Hspeed = letterSpeed;
+  }
+  if(Hsize > letterSizeMax) {
+    Hspeed = -letterSpeed;
+  }
+  if(Hsize < 0) {
+    Hsize = 0;
+    Hspeed = 0;
+  }
+  Hsize = Hsize + Hspeed;
+
+  // letter A
+  if(letterCounter == letterDelay*2) {
+    Aspeed = letterSpeed;
+  }
+  if(Asize > letterSizeMax) {
+    Aspeed = -letterSpeed;
+  }
+  if(Asize < 0) {
+    Asize = 0;
+    Aspeed = 0;
+  }
+  Asize = Asize + Aspeed;
+
+  // letter P (first)
+  if(letterCounter == letterDelay*3) {
+    Paspeed = letterSpeed;
+  }
+  if(Pasize > letterSizeMax) {
+    Paspeed = -letterSpeed;
+  }
+  if(Pasize < 0) {
+    Pasize = 0;
+    Paspeed = 0;
+  }
+  Pasize = Pasize + Paspeed;
+
+  // letter P (second)
+  if(letterCounter == letterDelay*4) {
+    Pbspeed = letterSpeed;
+  }
+  if(Pbsize > letterSizeMax) {
+    Pbspeed = -letterSpeed;
+  }
+  if(Pbsize < 0) {
+    Pbsize = 0;
+    Pbspeed = 0;
+  }
+  Pbsize = Pbsize + Pbspeed;
+
+  // letter Y
+  if(letterCounter == letterDelay*5) {
+    Yspeed = letterSpeed;
+  }
+  if(Ysize > letterSizeMax) {
+    Yspeed = -letterSpeed;
+  }
+  if(Ysize < 0) {
+    Ysize = 0;
+    Yspeed = 0;
+  }
+  Ysize = Ysize + Yspeed;
+
+  // letter P (third)
+  if(letterCounter == letterDelay*7) {
+    Pcspeed = letterSpeed;
+  }
+  if(Pcsize > letterSizeMax) {
+    Pcspeed = -letterSpeed;
+  }
+  if(Pcsize < 0) {
+    Pcsize = 0;
+    Pcspeed = 0;
+  }
+  Pcsize = Pcsize + Pcspeed;
+
+  // letter O
+  if(letterCounter == letterDelay*8) {
+    Ospeed = letterSpeed;
+  }
+  if(Osize > letterSizeMax) {
+    Ospeed = -letterSpeed;
+  }
+  if(Osize < 0) {
+    Osize = 0;
+    Ospeed = 0;
+  }
+  Osize = Osize + Ospeed;
+
+  // letter N
+  if(letterCounter == letterDelay*9) {
+    Nspeed = letterSpeed;
+  }
+  if(Nsize > letterSizeMax) {
+    Nspeed = -letterSpeed;
+  }
+  if(Nsize < 0) {
+    Nsize = 0;
+    Nspeed = 0;
+  }
+  Nsize = Nsize + Nspeed;
+
+  // letter G
+  if(letterCounter == letterDelay*10) {
+    Gspeed = letterSpeed;
+  }
+  if(Gsize > letterSizeMax) {
+    Gspeed = -letterSpeed;
+  }
+  if(Gsize < 0) {
+    Gsize = 0;
+    Gspeed = 0;
+  }
+  Gsize = Gsize + Gspeed;
+}
+
+bool HappyPongShouldClose() {
+  if((IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP))
+  && (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+  && (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT))
+  && (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))
+  && (IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_RIGHT))) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void drawVmuPaws(){
+pawsCounter = pawsCounter + 1;
+
+if(pawsCounter > 10) {
+  vmuPaws = vmuPaws + 1;
+  if(vmuPaws > 8) {
+    vmuPaws = 1;
+  }
+  pawsCounter = 1;
 }
 
 
+switch (vmuPaws) {
+      case 1:
+        vmufb_print_string_into(&vmufb, NULL, 10, 14, 48, 6, 0, "D   + C");
+      break;
+      case 2:
+        vmufb_print_string_into(&vmufb, NULL, 10, 14, 48, 6, 0, "D    +C");
+      break;
+      case 3:
+        vmufb_print_string_into(&vmufb, NULL, 10, 14, 48, 6, 0, "D   +C ");
+      break;
+      case 4:
+        vmufb_print_string_into(&vmufb, NULL, 10, 14, 48, 6, 0, "D  +  C");
+      break;
+      case 5:
+        vmufb_print_string_into(&vmufb, NULL, 10, 14, 48, 6, 0, "D +   C");
+      break;
+      case 6:
+        vmufb_print_string_into(&vmufb, NULL, 10, 14, 48, 6, 0, "D+    C");
+      break;
+      case 7:
+        vmufb_print_string_into(&vmufb, NULL, 10, 14, 48, 6, 0, " D+   C");
+      break;
+      case 8:
+        vmufb_print_string_into(&vmufb, NULL, 10, 14, 48, 6, 0, "D  +  C");
+      break;
+  }
+}
+
 int main() {
-//  cout << "Happy Pong for Dreamcast" << endl;
+
   const int screen_width = 640;
   const int screen_height = 480;
 
   InitWindow(screen_width, screen_height, "Happy Pong Dreamcast");
+  SetTargetFPS(30);
 
-  /*
-  InitAudioDevice();
-
-  rebond_ballon = LoadSound("sounds/rebond_ballon.wav");
-  petit_chat = LoadSound("sounds/petit_chat.wav");
-  Chouette = LoadSound("sounds/Chouette.wav");
-  */
+  snd_init();
 
 
 // CD
-  //star128x512 = LoadTexture("/cd/sprites/star128x512.png");
+// sounds
+  poc = snd_sfx_load("/cd/sounds/poc.wav");
+  bim = snd_sfx_load("/cd/sounds/bim.wav");
+  woosh = snd_sfx_load("/cd/sounds/woosh.wav");
+  dash = snd_sfx_load("/cd/sounds/dash.wav");
+  split = snd_sfx_load("/cd/sounds/split.wav");
+  glue = snd_sfx_load("/cd/sounds/glue.wav");
+  ghost = snd_sfx_load("/cd/sounds/ghost.wav");
+  paw = snd_sfx_load("/cd/sounds/paw.wav");
+  pawpawpaw = snd_sfx_load("/cd/sounds/pawpawpaw.wav");
+  happypong = snd_sfx_load("/cd/sounds/happypong.wav");
+  ronron = snd_sfx_load("/cd/sounds/ronron.wav");
+
+// sprites
   sevenStars512x512 = LoadTexture("/cd/sprites/sevenStars512x512.png");
   zero64x64 = LoadTexture("/cd/sprites/zero64x64.png");
   one64x64 = LoadTexture("/cd/sprites/one64x64.png");
@@ -1053,29 +1436,70 @@ int main() {
   rabbitHeart = LoadTexture("/cd/sprites/rabbitHeart.png");
   spark = LoadTexture("/cd/sprites/spark.png");
   rabbit_eyes = LoadTexture("/cd/sprites/rabbit_eyes.png");
-  //you_lose256x256 = LoadTexture("/cd/sprites/you_lose256x256.png");
-  //you_win256x256 = LoadTexture("/cd/sprites/you_win256x256.png");
   credits512x64 = LoadTexture("/cd/sprites/credits512x64.png");
   QRCodeNB64x64 = LoadTexture("/cd/sprites/QRCodeNB64x64.png");
   pinkCorners = LoadTexture("/cd/sprites/pinkCorners.png");
+  H128x128 = LoadTexture("/cd/sprites/H128x128.png");
+  A128x256 = LoadTexture("/cd/sprites/A128x256.png");
+  Pa128x256 = LoadTexture("/cd/sprites/Pa128x256.png");
+  Pb128x256 = LoadTexture("/cd/sprites/Pb128x256.png");
+  Y128x256 = LoadTexture("/cd/sprites/Y128x256.png");
+  Pc128x256 = LoadTexture("/cd/sprites/Pc128x256.png");
+  O128x128 = LoadTexture("/cd/sprites/O128x128.png");
+  N128x128 = LoadTexture("/cd/sprites/N128x128.png");
+  G128x128 = LoadTexture("/cd/sprites/G128x128.png");
 
-  SetTargetFPS(30);
+  // play the purring cat sound repeatedly
+  sfx_play_data_t data = {0};
+	ronron_loop_channel = snd_sfx_chn_alloc();
+	data.chn = ronron_loop_channel;
+	data.idx = ronron;
+	data.vol = 128;
+	data.pan = 128;
+	data.loop = 1;
+	data.loopstart = 0;
+  data.loopend = 0;
 
-  while(WindowShouldClose() == false) {
-    BeginDrawing();
+	snd_sfx_play_ex(&data);
+
+  snd_sfx_play(happypong, 128, 128);
 
 ///////////////////////////////////// LOOP
+
+  while(HappyPongShouldClose() == false) {
+
+    // VMU display ASCII art playing cat
+    vmufb_clear(&vmufb);
+ 
+    vmufb_print_string_into(&vmufb, NULL, 2, 0, 48, 32, 1, "   /\\-/\\\n  ( ^x^ )\n\n (_)___(_)");
+
+    drawVmuPaws();
+    
+    for(vmu = 0; !!(dev = maple_enum_type(vmu, MAPLE_FUNC_LCD)); vmu++) {
+      vmufb_present(&vmufb, dev);
+    }
+
+    BeginDrawing();
+    ClearBackground({255, 153, 229});
+
 
     switch (gameMode) {
 
       case 0: // titlescreen
-        ClearBackground({255, 153, 229, 255});
 
-        DrawTexturePro(HAPPY_PONG512x512, {0, 16, 512, 480}, {64, 0, 512, 480}, {0, 0}, 0, WHITE);
+        changeLettersSize();
 
-        //DrawText(TextFormat("HAPPY PONG"), 60, 210, 80, WHITE);
+        DrawTexturePro(H128x128, {0, 0, 128, 128}, {161, 173, 128 + Hsize, 128 + Hsize}, {64 + (Hsize/2), 64 + (Hsize/2)}, 0, WHITE);
+        DrawTexturePro(A128x256, {0, 0, 128, 256}, {243, 167, 128 + Asize, 256 + (Asize*2)}, {64 + (Asize/2), 128 + Asize}, 0, WHITE);
+        DrawTexturePro(Pa128x256, {0, 0, 128, 256}, {321, 165, 128 + Pasize, 256 + (Pasize*2)}, {64 + (Pasize/2), 128 + Pasize}, 0, WHITE);
+        DrawTexturePro(Pb128x256, {0, 0, 128, 256}, {401, 172, 128 + Pbsize, 256 + (Pbsize*2)}, {64 + (Pbsize/2), 128 + Pbsize}, 0, WHITE);
+        DrawTexturePro(Y128x256, {0, 0, 128, 256}, {476, 185, 128 + Ysize, 256 + (Ysize*2)}, {64 + (Ysize/2), 128 + Ysize}, 0, WHITE);
 
-        //if(IsKeyPressed(KEY_ENTER)) {
+        DrawTexturePro(Pc128x256, {0, 0, 128, 256}, {174, 313, 128 + Pcsize, 256 + (Pcsize*2)}, {64 + (Pcsize/2), 128 + Pcsize}, 0, WHITE);
+        DrawTexturePro(O128x128, {0, 0, 128, 128}, {250, 321, 128 + Osize, 128 + Osize}, {64 + (Osize/2), 64 + (Osize/2)}, 0, WHITE);
+        DrawTexturePro(N128x128, {0, 0, 128, 128}, {343, 318, 128 + Nsize, 128 + Nsize}, {64 + (Nsize/2), 64 + (Nsize/2)}, 0, WHITE);
+        DrawTexturePro(G128x128, {0, 0, 128, 128}, {449, 329, 128 + Gsize, 128 + Gsize}, {64 + (Gsize/2), 64 + (Gsize/2)}, 0, WHITE);
+ 
         if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
           gameMode = 1;
           twoControllers = false;
@@ -1087,9 +1511,6 @@ int main() {
       break;
       
       case 1: // game
-    
-// light pink background
-    ClearBackground({255, 153, 229, 255});
 
     movePlayer();
     moveOpponent();
@@ -1104,43 +1525,23 @@ int main() {
     ball_y = ball_y + ball_vy;
 
     fake_ball_y = fake_ball_y + fake_ball_vy;
-
-    /*
-    if(endEffect == false) {
-      if(ball_vx > 0){
-        if((ball_x + (ball_size / 2)) > 320) {
-          endEffect = true;
-          starColor = 0;
-          playerEffect = false;
-        }
-      } else {
-        if((ball_x + (ball_size / 2)) < 320) {
-          endEffect = true;
-          starColor = 0;
-          opponentEffect = false;
-        }
-      }
-    }
-    */
     
     updateCollisions();
 
     // go to winner screen if 10 points is reached
     if (player_score == 10) {
       winner = PLAYER;
-//    winner_timer = winner_timermax;
-//      player_score = 0;
-//      opponent_score = 0;
+
       gameMode = 2;
-    //  PlaySound(Chouette);
+    //  ten points sound
+    snd_sfx_play(pawpawpaw, 128, 128);
     }
     if (opponent_score == 10) {
       winner = OPPONENT;
-//      winner_timer = winner_timermax;
-//      player_score = 0;
-//      opponent_score = 0;
+
       gameMode = 2;
-    //  PlaySound(Chouette);
+    //  ten points sound
+    snd_sfx_play(pawpawpaw, 128, 128);
     }
 
     draw();
@@ -1150,79 +1551,41 @@ int main() {
       gameMode = 0;
       resetValues();
       twoControllers = false;
+      snd_sfx_play(happypong, 128, 128);
     } else if(IsGamepadButtonPressed(1, GAMEPAD_BUTTON_MIDDLE_RIGHT)){
       gameMode = 0;
       resetValues();
       twoControllers = true;
+      snd_sfx_play(happypong, 128, 128);
     }
 
     break;
 
     case 2: // winner screen
 
-    // light pink background
-    ClearBackground({255, 153, 229, 255});
- 
-    //DrawTexturePro(rabbitHeart, {0, 0, 256, 256}, {192, 112, 256, 256}, {0, 0}, 0, WHITE);
-
     // draw Juice Lizard linktree QR code with rounded corners
     DrawTexturePro(QRCodeNB64x64, {0, 0, 64, 64}, {160, 80, 320, 320}, {0, 0}, 0, WHITE);
+    
     DrawTexturePro(pinkCorners, {0, 0, 8, 8}, {175, 95, 8, 8}, {0, 0}, 0, WHITE);
     DrawTexturePro(pinkCorners, {8, 0, 8, 8}, {457, 95, 8, 8}, {0, 0}, 0, WHITE);
     DrawTexturePro(pinkCorners, {0, 8, 8, 8}, {175, 377, 8, 8}, {0, 0}, 0, WHITE);
     DrawTexturePro(pinkCorners, {8, 8, 8, 8}, {457, 377, 8, 8}, {0, 0}, 0, WHITE);
-/*
-    if(clockwise) {
-      win_rotation = win_rotation + 2;
-      if(win_rotation > 15) {
-        clockwise = false;
-      }
-    } else {
-      win_rotation = win_rotation - 2;
-      if(win_rotation < -15) {
-        clockwise = true;
-      }
-    }
-
-    if(win_bigger) {
-      win_size = win_size + 4;
-      if(win_size > 16) {
-        win_bigger = false;
-      }
-    } else {
-      win_size = win_size - 4;
-      if(win_size < -16) {
-        win_bigger = true;
-      }
-    }
-*/
-
-    /*
-    if(winner) {
-      DrawTexturePro(you_lose256x256, {0, 0, 160, 160}, {520, 120, 160, 160}, {80, 80}, 0, WHITE);
-      DrawTexturePro(you_win256x256, {0, 0, 160, 160}, {120, 120, 160 + win_size, 160 + win_size}, {80 + (win_size/2), 80 + (win_size/2)}, win_rotation, WHITE);
-     // DrawTexturePro(rabbit_eyes, {0, 0, 128, 64}, {256 - 8, 224 - 8, 128, 64}, {0, 0}, 0, WHITE);
-    } else {
-      DrawTexturePro(you_lose256x256, {0, 0, 160, 160}, {120, 120, 160, 160}, {80, 80}, 0, WHITE);
-      DrawTexturePro(you_win256x256, {0, 0, 160, 160}, {520, 120, 160 + win_size, 160 + win_size}, {80 + (win_size/2), 80 + (win_size/2)}, win_rotation, WHITE);
-     // DrawTexturePro(rabbit_eyes, {0, 0, 128, 64}, {256 + 8, 224 - 8, 128, 64}, {0, 0}, 0, WHITE);
-    }
-    */
 
     DrawTexturePro(credits512x64, {0, 0, 512, 64}, {64, 400, 512, 64}, {0, 0}, 0, WHITE);
 
     drawScore();
 
-// go back to the titlescreen
-  //  if(IsKeyPressed(KEY_ENTER)) {
+  // go back to the titlescreen
     if (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
       gameMode = 0;
       resetValues();
       twoControllers = false;
+      snd_sfx_play(happypong, 128, 128);
     } else if(IsGamepadButtonPressed(1, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
       gameMode = 0;
       resetValues();
       twoControllers = true;
+      snd_sfx_play(happypong, 128, 128);
     }
     
     }
@@ -1230,13 +1593,14 @@ int main() {
     EndDrawing();
   }
 
-  /*
-  UnloadSound(rebond_ballon);
-  UnloadSound(petit_chat);
-  UnloadSound(Chouette);
-  */
+  // unload sounds
+  snd_sfx_unload_all();
 
-  //UnloadTexture(star128x512);
+  snd_sfx_stop(ronron_loop_channel);
+	snd_sfx_chn_free(ronron_loop_channel);
+	ronron_loop_channel = -1;
+
+  // unload textures
   UnloadTexture(sevenStars512x512);
   UnloadTexture(one64x64);
   UnloadTexture(two64x64);
@@ -1254,14 +1618,24 @@ int main() {
   UnloadTexture(rabbit_eyes);
   UnloadTexture(rabbitHeart);
   UnloadTexture(spark);
-  //UnloadTexture(you_lose256x256);
-  //UnloadTexture(you_win256x256);
+
   UnloadTexture(credits512x64);
   UnloadTexture(QRCodeNB64x64);
   UnloadTexture(pinkCorners);
+  UnloadTexture(H128x128);
+  UnloadTexture(A128x256);
+  UnloadTexture(Pa128x256);
+  UnloadTexture(Pb128x256);
+  UnloadTexture(Y128x256);
+  UnloadTexture(Pc128x256);
+  UnloadTexture(O128x128);
+  UnloadTexture(N128x128);
+  UnloadTexture(G128x128);
 
-  //CloseAudioDevice();
+  snd_shutdown();
 
-  CloseWindow();
+// go back to Dreamcast menu
+  arch_menu();
+
   return 0;
 }
