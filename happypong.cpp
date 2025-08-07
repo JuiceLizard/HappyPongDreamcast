@@ -22,42 +22,350 @@
 using namespace std;
 
 // VMU stuff
-/*
-static const char badger[] = {
-    0b00000000000000000000000000000000,
-    0b00000000000000000000000000000000,
-    0b00000000000000000000000000000000,
-    0b00000000000000000000000000000000,
-    0b00111111111100000000111111111100,
-    0b00111111111100000000111111111100,
-    0b00110000001111000011110000001100,
-    0b00110000001111000011110000001100,
-    0b00110011110011000011001111001100,
-    0b00110011110011000011001111001100,
-    0b00110011110011111111001111001100,
-    0b00110011110011111111001111001100,
-    0b00111100111111000011111100111100,
-    0b00111100111111000011111100111100,
-    0b00110000111111000011111100001100,
-    0b00110000111111000011111100001100,
-    0b00110000110011000011001100001100,
-    0b00110000110011000011001100001100,
-    0b00111100001111000011110000111100,
-    0b00111100001111000011110000111100,
-    0b00001111000000000000000011110000,
-    0b00001111000000000000000011110000,
-    0b00000011110011111111001111000000,
-    0b00000011110011111111001111000000,
-    0b00000000111100111100111100000000,
-    0b00000000111100111100111100000000,
-    0b00000000001111111111110000000000,
-    0b00000000001111111111110000000000,
-    0b00000000000000000000000000000000,
-    0b00000000000000000000000000000000,
-    0b00000000000000000000000000000000,
-    0b00000000000000000000000000000000,
+
+static const uint8_t badger[] = {
+
+    0b00000000, 0b00000000, 0b00000000, 0b00000000,
+    0b00000000, 0b00000000, 0b00000000, 0b00000000,
+    0b00000000, 0b00000000, 0b00000000, 0b00000000,
+    0b00000000, 0b00000000, 0b00000000, 0b00000000,
+    0b00111111, 0b11110000, 0b00001111, 0b11111100,
+    0b00111111, 0b11110000, 0b00001111, 0b11111100,
+    0b00110000, 0b00111100, 0b00111100, 0b00001100,
+    0b00110000, 0b00111100, 0b00111100, 0b00001100,
+    0b00110011, 0b11001100, 0b00110011, 0b11001100,
+    0b00110011, 0b11001100, 0b00110011, 0b11001100,
+    0b00110011, 0b11001111, 0b11110011, 0b11001100,
+    0b00110011, 0b11001111, 0b11110011, 0b11001100,
+    0b00111100, 0b11111100, 0b00111111, 0b00111100,
+    0b00111100, 0b11111100, 0b00111111, 0b00111100,
+    0b00110000, 0b11111100, 0b00111111, 0b00001100,
+    0b00110000, 0b11111100, 0b00111111, 0b00001100,
+    0b00110000, 0b11001100, 0b00110011, 0b00001100,
+    0b00110000, 0b11001100, 0b00110011, 0b00001100,
+    0b00111100, 0b00111100, 0b00111100, 0b00111100,
+    0b00111100, 0b00111100, 0b00111100, 0b00111100,
+    0b00001111, 0b00000000, 0b00000000, 0b11110000,
+    0b00001111, 0b00000000, 0b00000000, 0b11110000,
+    0b00000011, 0b11001111, 0b11110011, 0b11000000,
+    0b00000011, 0b11001111, 0b11110011, 0b11000000,
+    0b00000000, 0b11110011, 0b11001111, 0b00000000,
+    0b00000000, 0b11110011, 0b11001111, 0b00000000,
+    0b00000000, 0b00111111, 0b11111100, 0b00000000,
+    0b00000000, 0b00111111, 0b11111100, 0b00000000,
+    0b00000000, 0b00000000, 0b00000000, 0b00000000,
+    0b00000000, 0b00000000, 0b00000000, 0b00000000,
+    0b00000000, 0b00000000, 0b00000000, 0b00000000,
+    0b00000000, 0b00000000, 0b00000000, 0b00000000
+
 };
-*/
+
+static const uint8_t starUp[] = {
+  0b00000000, 0b00000111, 0b11100000, 0b00000000,
+  0b00000000, 0b00001111, 0b11110000, 0b00000000,
+  0b00000000, 0b00001111, 0b11110000, 0b00000000,
+  0b00000000, 0b00011110, 0b01111000, 0b00000000,
+
+  0b00000000, 0b00011100, 0b00111000, 0b00000000,
+  0b00000000, 0b00111100, 0b00111100, 0b00000000,
+  0b00000000, 0b00111000, 0b00011100, 0b00000000,
+  0b00000000, 0b01111000, 0b00011110, 0b00000000,
+
+  0b01111111, 0b11110000, 0b00001111, 0b11111110,
+  0b11111111, 0b11110000, 0b00001111, 0b11111111,
+  0b11111111, 0b11100000, 0b00000111, 0b11111111,
+  0b11110000, 0b00000000, 0b00000000, 0b00001111,
+
+  0b11100000, 0b00000000, 0b00000000, 0b00000111,
+  0b11110000, 0b00000000, 0b00000000, 0b00001111,
+  0b11111000, 0b00000000, 0b00000000, 0b00011111,
+  0b01111100, 0b00000000, 0b00000000, 0b00111110,
+
+  0b00111110, 0b00000000, 0b00000000, 0b01111100,
+  0b00011111, 0b00000000, 0b00000000, 0b11111000,
+  0b00001111, 0b10000000, 0b00000001, 0b11110000,
+  0b00000111, 0b10000000, 0b00000001, 0b11100000,
+
+  0b00000111, 0b10000000, 0b00000001, 0b11100000,
+  0b00000111, 0b00000000, 0b00000000, 0b11100000,
+  0b00001111, 0b00000000, 0b00000000, 0b11110000,
+  0b00001111, 0b00000000, 0b00000000, 0b11110000,
+
+  0b00001110, 0b00000001, 0b10000000, 0b01110000,
+  0b00001110, 0b00000011, 0b11000000, 0b01110000,
+  0b00011110, 0b00001111, 0b11110000, 0b01111000,
+  0b00011100, 0b00111111, 0b11111100, 0b00111000,
+
+  0b00011100, 0b11111110, 0b01111111, 0b00111000,
+  0b00011111, 0b11111000, 0b00011111, 0b11111000,
+  0b00001111, 0b11100000, 0b00000111, 0b11110000,
+  0b00000111, 0b10000000, 0b00000001, 0b11100000
+
+};
+
+static const uint8_t starRight[] = {
+
+  0b00000000, 0b00000000, 0b01111110, 0b00000000,
+  0b00000000, 0000000000, 0b11111111, 0b00000000,
+  0b00000000, 0b00000001, 0b11111111, 0b00000000,
+  0b00111100, 0b00000011, 0b11101111, 0b00000000,
+
+  0b01111111, 0b11000111, 0b11000111, 0b00000000,
+  0b11111111, 0b11111111, 0b10000111, 0b00000000,
+  0b11100111, 0b11111111, 0b00000111, 0b00000000,
+  0b11100000, 0b11111110, 0b00000111, 0b00000000,
+
+  0b11110000, 0b00011100, 0b00000111, 0b00000000,
+  0b01110000, 0b00000000, 0b00000111, 0b10000000,
+  0b01111000, 0b00000000, 0b00000111, 0b11100000,
+  0b00111000, 0b00000000, 0b00000011, 0b11111000,
+
+  0b00111100, 0b00000000, 0b00000000, 0b11111110,
+  0b00011100, 0b00000000, 0b00000000, 0b00111111,
+  0b00011110, 0b00000000, 0b00000000, 0b00001111,
+  0b00001111, 0b00000000, 0b00000000, 0b00000111,
+
+  0b00001111, 0b00000000, 0b00000000, 0b00000111,
+  0b00011110, 0b00000000, 0b00000000, 0b00001111,
+  0b00011100, 0b00000000, 0b00000000, 0b00111111,
+  0b00111100, 0b00000000, 0b00000000, 0b11111110,
+
+  0b00111000, 0b00000000, 0b00000011, 0b11111000,
+  0b01111000, 0b00000000, 0b00000111, 0b11100000,
+  0b01110000, 0b00000000, 0b00000111, 0b10000000,
+  0b11110000, 0b00011100, 0b00000111, 0b00000000,
+  
+  0b11100000, 0b11111110, 0b00000111, 0b00000000,
+  0b11100111, 0b11111111, 0b00000111, 0b00000000,
+  0b11111111, 0b11111111, 0b10000111, 0b00000000,
+  0b01111111, 0b11000111, 0b11000111, 0b00000000,
+
+  0b00111100, 0b00000011, 0b11101111, 0b00000000,
+  0b00000000, 0b00000001, 0b11111111, 0b00000000,
+  0b00000000, 0000000000, 0b11111111, 0b00000000,
+  0b00000000, 0b00000000, 0b01111110, 0b00000000
+
+};
+
+static const uint8_t starDown[] = {
+
+  0b00000111, 0b10000000, 0b00000001, 0b11100000,
+  0b00001111, 0b11100000, 0b00000111, 0b11110000,
+  0b00011111, 0b11111000, 0b00011111, 0b11111000,
+  0b00011100, 0b11111110, 0b01111111, 0b00111000,
+
+  0b00011100, 0b00111111, 0b11111100, 0b00111000,
+  0b00011110, 0b00001111, 0b11110000, 0b01111000,
+  0b00001110, 0b00000011, 0b11000000, 0b01110000,
+  0b00001110, 0b00000001, 0b10000000, 0b01110000,
+
+  0b00001111, 0b00000000, 0b00000000, 0b11110000,
+  0b00001111, 0b00000000, 0b00000000, 0b11110000,
+  0b00000111, 0b00000000, 0b00000000, 0b11100000,
+  0b00000111, 0b10000000, 0b00000001, 0b11100000,
+
+  0b00000111, 0b10000000, 0b00000001, 0b11100000,
+  0b00001111, 0b10000000, 0b00000001, 0b11110000,
+  0b00011111, 0b00000000, 0b00000000, 0b11111000,
+  0b00111110, 0b00000000, 0b00000000, 0b01111100,
+
+  0b01111100, 0b00000000, 0b00000000, 0b00111110,
+  0b11111000, 0b00000000, 0b00000000, 0b00011111,
+  0b11110000, 0b00000000, 0b00000000, 0b00001111,
+  0b11100000, 0b00000000, 0b00000000, 0b00000111,
+
+  0b11110000, 0b00000000, 0b00000000, 0b00001111,
+  0b11111111, 0b11100000, 0b00000111, 0b11111111,
+  0b11111111, 0b11110000, 0b00001111, 0b11111111,
+  0b01111111, 0b11110000, 0b00001111, 0b11111110,
+
+  0b00000000, 0b01111000, 0b00011110, 0b00000000,
+  0b00000000, 0b00111000, 0b00011100, 0b00000000,
+  0b00000000, 0b00111100, 0b00111100, 0b00000000,
+  0b00000000, 0b00011100, 0b00111000, 0b00000000, 
+
+  0b00000000, 0b00011110, 0b01111000, 0b00000000,
+  0b00000000, 0b00001111, 0b11110000, 0b00000000,
+  0b00000000, 0b00001111, 0b11110000, 0b00000000,
+  0b00000000, 0b00000111, 0b11100000, 0b00000000
+
+};
+
+static const uint8_t starLeft[] = {
+
+  0b00000000, 0b01111110, 0b00000000, 0b00000000,
+  0b00000000, 0b11111111, 0b00000000, 0b00000000,
+  0b00000000, 0b11111111, 0b10000000, 0b00000000,
+  0b00000000, 0b11110111, 0b11000000, 0b00111100,
+
+  0b00000000, 0b11100011, 0b11100011, 0b11111110,
+  0b00000000, 0b11100001, 0b11111111, 0b11111111,
+  0b00000000, 0b11100000, 0b11111111, 0b11100111,
+  0b00000000, 0b11100000, 0b01111111, 0b00000111,
+
+  0b00000000, 0b11100000, 0b00111000, 0b00001111,
+  0b00000001, 0b11100000, 0b00000000, 0b00001110,
+  0b00000111, 0b11100000, 0b00000000, 0b00011110,
+  0b00011111, 0b11000000, 0b00000000, 0b00011100,
+
+  0b01111111, 0b00000000, 0b00000000, 0b00111100,
+  0b11111100, 0b00000000, 0b00000000, 0b00111000,
+  0b11110000, 0b00000000, 0b00000000, 0b01111000,
+  0b11100000, 0b00000000, 0b00000000, 0b11110000,
+
+  0b11100000, 0b00000000, 0b00000000, 0b11110000,
+  0b11110000, 0b00000000, 0b00000000, 0b01111000,
+  0b11111100, 0b00000000, 0b00000000, 0b00111000,
+  0b01111111, 0b00000000, 0b00000000, 0b00111100,
+
+  0b00011111, 0b11000000, 0b00000000, 0b00011100,
+  0b00000111, 0b11100000, 0b00000000, 0b00011110,
+  0b00000001, 0b11100000, 0b00000000, 0b00001110,
+  0b00000000, 0b11100000, 0b00111000, 0b00001111,
+
+  0b00000000, 0b11100000, 0b01111111, 0b00000111,
+  0b00000000, 0b11100000, 0b11111111, 0b11100111,
+  0b00000000, 0b11100001, 0b11111111, 0b11111111,
+  0b00000000, 0b11100011, 0b11100011, 0b11111110,
+
+  0b00000000, 0b11110111, 0b11000000, 0b00111100,
+  0b00000000, 0b11111111, 0b10000000, 0b00000000,
+  0b00000000, 0b11111111, 0b00000000, 0b00000000,
+  0b00000000, 0b01111110, 0b00000000, 0b00000000
+
+};
+
+static const uint8_t oneVMU[] = {
+
+  0b00000000, 0b00000000, 0b00000000, 0b00000000,
+  0b00000000, 0b00000000, 0b00110000, 0b00000000,
+  0b00000000, 0b00000000, 0b11111000, 0b00000000,
+  0b00000000, 0b00000011, 0b11111100, 0b00000000,
+
+  0b00000000, 0b00000111, 0b11111100, 0b00000000,
+  0b00000000, 0b00001111, 0b11111100, 0b00000000,
+  0b00000000, 0b00011111, 0b11111000, 0b00000000,
+  0b00000000, 0b00111111, 0b11111000, 0b00000000,
+
+  0b00000000, 0b01111111, 0b11111000, 0b00000000,
+  0b00000000, 0b01111101, 0b11111000, 0b00000000,
+  0b00000000, 0b01110001, 0b11110000, 0b00000000,
+  0b00000000, 0b00000001, 0b11110000, 0b00000000,
+
+  0b00000000, 0b00000001, 0b11110000, 0b00000000,
+  0b00000000, 0b00000001, 0b11110000, 0b00000000,
+  0b00000000, 0b00000001, 0b11110000, 0b00000000,
+  0b00000000, 0b00000001, 0b11110000, 0b00000000,
+
+  0b00000000, 0b00000011, 0b11100000, 0b00000000,
+  0b00000000, 0b00000011, 0b11100000, 0b00000000,
+  0b00000000, 0b00000011, 0b11100000, 0b00000000,
+  0b00000000, 0b00000011, 0b11100000, 0b00000000,
+ 
+  0b00000000, 0b00000011, 0b11100000, 0b00000000,
+  0b00000000, 0b00000011, 0b11100000, 0b00000000,
+  0b00000000, 0b00000111, 0b11000000, 0b00000000,
+  0b00000000, 0b00000111, 0b11000000, 0b00000000,
+
+  0b00000000, 0b00000111, 0b11000000, 0b00000000,
+  0b00000000, 0b00000111, 0b11000000, 0b00000000,
+  0b00000000, 0b00000111, 0b11000000, 0b00000000,
+  0b00000000, 0b00000111, 0b10000000, 0b00000000,
+
+  0b00000000, 0b00000111, 0b10000000, 0b00000000,
+  0b00000000, 0b00000111, 0b00000000, 0b00000000,
+  0b00000000, 0b00000000, 0b00000000, 0b00000000,
+  0b00000000, 0b00000000, 0b00000000, 0b00000000
+
+};
+
+static const uint8_t twoVMU[] = {
+
+  0b00000000, 0b00000000, 0b00000000, 0b00000000,
+  0b00000000, 0b00000000, 0b00000000, 0b00000000,
+  0b00000000, 0b00000111, 0b11000000, 0b00000000,
+  0b00000000, 0b00011111, 0b11100000, 0b00000000,
+
+  0b00000000, 0b01111111, 0b11110000, 0b00000000,
+  0b00000000, 0b11111111, 0b11111000, 0b00000000,
+  0b00000001, 0b11111111, 0b11111000, 0b00000000,
+  0b00000001, 0b11111111, 0b11111000, 0b00000000,
+
+  0b00000001, 0b11111000, 0b11111000, 0b00000000,
+  0b00000001, 0b11110000, 0b11111000, 0b00000000,
+  0b00000000, 0b01100001, 0b11111000, 0b00000000,
+  0b00000000, 0b00000001, 0b11111000, 0b00000000,
+
+  0b00000000, 0b00000011, 0b11110000, 0b00000000,
+  0b00000000, 0b00000011, 0b11110000, 0b00000000,
+  0b00000000, 0b00000111, 0b11100000, 0b00000000,
+  0b00000000, 0b00000111, 0b11100000, 0b00000000,
+
+  0b00000000, 0b00001111, 0b11000000, 0b00000000,
+  0b00000000, 0b00011111, 0b10000000, 0b00000000,
+  0b00000000, 0b00111111, 0b10000000, 0b00000000,
+  0b00000000, 0b01111111, 0b00000000, 0b00000000,
+
+  0b00000000, 0b01111111, 0b00000000, 0b00000000,
+  0b00000000, 0b11111110, 0b00000000, 0b00000000,
+  0b00000000, 0b11111110, 0b00000000, 0b00000000,
+  0b00000000, 0b11111100, 0b00001111, 0b10000000,
+
+  0b00000001, 0b11111110, 0b11111111, 0b11000000,
+  0b00000001, 0b11111111, 0b11111111, 0b11000000,
+  0b00000001, 0b11111111, 0b11111111, 0b11000000,
+  0b00000001, 0b11111111, 0b11111111, 0b11000000,
+
+  0b00000001, 0b11111111, 0b11111111, 0b10000000,
+  0b00000000, 0b11111111, 0b10000000, 0b00000000,
+  0b00000000, 0b00000000, 0b00000000, 0b00000000,
+  0b00000000, 0b00000000, 0b00000000, 0b00000000
+
+};
+
+static const uint8_t threeVMU[] = {
+
+  0b00000000, 0b00000000, 0b11100000, 0b00000000,
+  0b00000000, 0b00000111, 0b11111000, 0b00000000,
+  0b00000000, 0b00011111, 0b11111100, 0b00000000,
+  0b00000000, 0b01111111, 0b11111100, 0b00000000,
+
+  0b00000000, 0b11111111, 0b11111110, 0b00000000,
+  0b00000001, 0b11111111, 0b11111110, 0b00000000,
+  0b00000001, 0b11111001, 0b11111110, 0b00000000,
+  0b00000001, 0b11110000, 0b11111110, 0b00000000,
+
+  0b00000000, 0b11000000, 0b11111100, 0b00000000,
+  0b00000000, 0b00000000, 0b11111100, 0b00000000,
+  0b00000000, 0b00000000, 0b11111100, 0b00000000,
+  0b00000000, 0b00000000, 0b11111000, 0b00000000,
+
+  0b00000000, 0b00000001, 0b11111000, 0b00000000,
+  0b00000000, 0b00001111, 0b11111110, 0b00000000,
+  0b00000000, 0b00111111, 0b11111111, 0b00000000,
+  0b00000000, 0b00111111, 0b11111111, 0b00000000,
+
+  0b00000000, 0b00111111, 0b11111111, 0b10000000,
+  0b00000000, 0b00011111, 0b11111111, 0b10000000,
+  0b00000000, 0b00000000, 0b01111111, 0b10000000,
+  0b00000000, 0b00000000, 0b00011111, 0b10000000,
+
+  0b00000000, 0b00000000, 0b00001111, 0b10000000,
+  0b00000000, 0b00000000, 0b00011111, 0b10000000,
+  0b00000000, 0b00000000, 0b00011111, 0b10000000,
+  0b00000000, 0b01000000, 0b00111111, 0b10000000,
+
+  0b00000000, 0b11100000, 0b01111111, 0b10000000,
+  0b00000001, 0b11111001, 0b11111111, 0b00000000,
+  0b00000001, 0b11111111, 0b11111111, 0b00000000,
+  0b00000000, 0b11111111, 0b11111110, 0b00000000,
+
+  0b00000000, 0b11111111, 0b11111100, 0b00000000,
+  0b00000000, 0b01111111, 0b11110000, 0b00000000,
+  0b00000000, 0b00011111, 0b11000000, 0b00000000,
+  0b00000000, 0b00000000, 0b00000000, 0b00000000
+
+};
 
 static vmufb_t vmufb;
 
@@ -146,14 +454,16 @@ float previous_opponent_y = 208;
 //ball variables
 float ball_size = 24;
 //float ball_x = opponent_x - ball_size - 20;
-float ball_x = 84;
+//float ball_x = 84;
+float ball_x = 88;
 //float ball_y = (GetScreenHeight() - ball_size) / 2;
 float ball_y = 228;
 
 float fake_ball_y = 228;
 int fake_ball_vy = 0;
 
-int ball_vx = 8;
+//int ball_vx = 8;
+int ball_vx = 6;
 int ball_vy = 0;
 int ball_vymax = 24;
 int star_number = 1;
@@ -242,6 +552,9 @@ const int letterDelay = 5;
 int vmuPaws = 1;
 int pawsCounter = 1;
 
+int hardMode = 0;
+int hardModeLeft = 0;
+int hardModeRightOne = 0;
 
 // the functions
 
@@ -286,6 +599,7 @@ void movePlayer() {
 
   checkPlayerButtons();
 
+  if(hardMode != 2) {
   switch (playerMode) {
     // human control
     // up and down D-pad buttons
@@ -311,15 +625,27 @@ void movePlayer() {
     player_vy = player_y - previous_player_y;
     break;
   }
+  }
 
   //computer control after timeout
   if (player_timeout > 0) {
     player_timeout--;
-  } else if((player_y + (player_h / 2)) < (ball_y + (ball_size / 2))) { //if the ball is below the opponent
-    player_vy = player_vy + 4; // accelerate down
+  //if the ball is below the player
+  } else if((player_y + (player_h / 2)) < (ball_y + (ball_size / 2))) {
+  // accelerate down
+    if(player_vy < 0) {
+      player_vy = player_vy + 4 + opponent_score;
+    } else {
+      player_vy = player_vy + 4;
+    }
     playerMode = 1;
   } else {
-    player_vy = player_vy - 4; // accelerate up
+  // accelerate up
+    if(player_vy > 0) {
+      player_vy = player_vy - 4 - opponent_score;
+    } else {
+      player_vy = player_vy - 4;
+    }
     playerMode = 1;
   }
 
@@ -335,6 +661,12 @@ void movePlayer() {
   if((playerMode == 1) || (player_timeout == 0)) {
     player_y = player_y + player_vy;
   }
+
+// player invivible if hardMode 2
+  if((hardMode == 2) && (ball_vx > -24)) {
+    player_y = ball_y + (ball_size / 2) - (player_h / 2);
+  }
+
 // keep the left paw inside the screen
    if(player_y < -(player_h/2)) {
     player_y = -(player_h/2);
@@ -417,6 +749,8 @@ void moveOpponent() {
   checkOpponentButtons();
 
   // human control
+
+  if(hardMode != 1) {
   switch (opponentMode) {
 
   // A and Y buttons control
@@ -474,14 +808,27 @@ void moveOpponent() {
 
   }
 
+  }
+
   //computer control after timeout
   if (opponent_timeout > 0) {
     opponent_timeout--;
-  } else if ((opponent_y + (opponent_h / 2)) < (ball_y + (ball_size / 2))) { //if the ball is below the opponent
-    opponent_vy = opponent_vy + 4; //move down
+  //if the ball is below the opponent
+  } else if ((opponent_y + (opponent_h / 2)) < (ball_y + (ball_size / 2))) {
+    //move down
+    if(opponent_vy < 0) {
+      opponent_vy = opponent_vy + 4 + player_score;
+    } else {
+      opponent_vy = opponent_vy + 4;
+    }
     opponentMode = 1;
   } else {
-    opponent_vy = opponent_vy - 4; //move up
+    //move up
+    if(opponent_vy > 0) {
+      opponent_vy = opponent_vy - 4 - player_score;
+    } else {
+      opponent_vy = opponent_vy - 4;
+    }
     opponentMode = 1;
   }
 
@@ -497,6 +844,15 @@ void moveOpponent() {
   if((opponentMode == 1) || (opponent_timeout == 0)) {
     opponent_y = opponent_y + opponent_vy;
   }
+
+// opponent invivible if hardMode 1
+  if((hardMode == 1) && (ball_vx < 24)) {
+    opponent_y = ball_y + (ball_size / 2) - (opponent_h / 2);
+  }
+
+
+//} else if ((opponent_y + (opponent_h / 2)) < (ball_y + (ball_size / 2))) {
+
 
 // keep the right paw inside the screen
   if(opponent_y < -(opponent_h/2)) {
@@ -524,6 +880,7 @@ void updateCollisions() {
     }
     //  PlaySound(poc);
     snd_sfx_play(poc, 128, (int)(ball_x/2.4));
+
   }
 
   //collision with the bottom border
@@ -557,7 +914,12 @@ void updateCollisions() {
   if((ball_x + ball_size > player_x) && (ball_x < player_x + player_w) &&
   (ball_y + ball_size > player_y) && (ball_y < player_y + player_h)) {
     ball_x = player_x + player_w;
-    ball_vx = -ball_vx;
+    //ball_vx = -ball_vx;
+    ball_vx = -ball_vx + 1;
+
+    if(ball_vx > 24) {
+      ball_vx = 24;
+    }
     
     previous_ball_vy = ball_vy;
     
@@ -572,7 +934,9 @@ void updateCollisions() {
       }
     }
 
-    if(playerMode == 3) { // trigger
+   // if(playerMode == 3) { // trigger
+    if((playerMode == 3) || (hardMode == 2)) { // trigger or hard mode 2
+      playerMode = 3;
       specialScore = specialScore - 2;
       if(specialScore < -2) {
         specialScore = 0;
@@ -581,7 +945,7 @@ void updateCollisions() {
       }
     }
 
-    if(player_timeout < 1) { // computer control
+    if((player_timeout < 1) && (hardMode == 0)) { // computer control and no hard mode
 
       previousSpecialScore = specialScore;
 
@@ -694,7 +1058,12 @@ void updateCollisions() {
   if((ball_x + ball_size > opponent_x) && (ball_x < opponent_x + opponent_w) &&
   (ball_y + ball_size > opponent_y) && (ball_y < opponent_y + opponent_h)) {
     ball_x = opponent_x - ball_size;
-    ball_vx = -ball_vx;
+    //ball_vx = -ball_vx;
+    ball_vx = -ball_vx - 1;
+
+    if(ball_vx < -24) {
+      ball_vx = -24;
+    }
 
     previous_ball_vy = ball_vy;
 
@@ -710,7 +1079,9 @@ void updateCollisions() {
       }
     }
 
-    if(opponentMode == 3) { // trigger
+  //  if(opponentMode == 3) { // trigger
+    if((opponentMode == 3) || (hardMode == 1)) { // trigger or hard mode left
+      opponentMode = 3;
       specialScore = specialScore + 2;
       if(specialScore > 2) {
         specialScore = 0;
@@ -719,7 +1090,7 @@ void updateCollisions() {
       }
     }
 
-    if(opponent_timeout < 1) { // computer control
+    if((opponent_timeout < 1) && (hardMode == 0)) { // computer control and no hard mode
 
       previousSpecialScore = specialScore;
 
@@ -841,8 +1212,10 @@ void updateCollisions() {
       snd_sfx_play(paw, 128, 0);
     }
 
-    ball_x = opponent_x - 16;
-    ball_vx = -abs(ball_vx);
+    //ball_x = opponent_x - 16;
+    ball_x = opponent_x - 20;
+    //ball_vx = -abs(ball_vx);
+    ball_vx = -6;
     ball_vy = 0;
   //  ball_y = GetRandomValue(0, GetScreenHeight() - ball_size - 1);
     ball_y = GetRandomValue(0, 480 - ball_size - 1);
@@ -866,8 +1239,10 @@ void updateCollisions() {
       snd_sfx_play(paw, 128, 255);
     }
 
-    ball_x = player_x + player_w + 20;
-    ball_vx = abs(ball_vx);
+    //ball_x = player_x + player_w + 20;
+    ball_x = player_x + player_w + 24;
+    //ball_vx = abs(ball_vx);
+    ball_vx = 6;
     ball_vy = 0;
   //  ball_y = GetRandomValue(0, GetScreenHeight() - ball_size - 1);
     ball_y = GetRandomValue(0, 480 - ball_size - 1);
@@ -997,9 +1372,11 @@ void drawStar() {
 
   //DrawTexturePro(star128x512, {0, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, WHITE);
   if(ball_vx > 0) {
-    DrawTexturePro(sevenStars512x512, {starColor*72, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, {255, 255, 255, starStealth});
+  //  DrawTexturePro(sevenStars512x512, {starColor*72, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, {255, 255, 255, starStealth});
+    DrawTexturePro(sevenStars512x512, {0, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, {255, 255, 255, starStealth});
   } else {
-    DrawTexturePro(sevenStars512x512, {starColor*72, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, {255, 255, 255, starStealth});
+  //  DrawTexturePro(sevenStars512x512, {starColor*72, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, {255, 255, 255, starStealth});
+    DrawTexturePro(sevenStars512x512, {0, ((float)star_number*72), 72, 72}, {(float)ball_x - 24, (float)ball_y - 24, 72, 72}, {0, 0}, 0, {255, 255, 255, starStealth});
   }
 
 //loop the retate counter from 0 to 4
@@ -1198,9 +1575,11 @@ void resetValues() {
   opponent_vy = 0;
   opponent_timeout = 0;
   opponent_bump = 0;
-  ball_x = 84;
+  //ball_x = 84;
+  ball_x = 88;
   ball_y = 228;
-  ball_vx = 8;
+  //ball_vx = 8;
+  ball_vx = 6;
   ball_vy = 0;
   playerMode = 1;
   opponentMode = 1;
@@ -1212,6 +1591,8 @@ void resetValues() {
   resetSpecialMove();
 
   resetTitleAnim();
+
+  hardMode = 0;
 
 }
 
@@ -1471,10 +1852,46 @@ int main() {
     // VMU display ASCII art playing cat
     vmufb_clear(&vmufb);
  
-    vmufb_print_string_into(&vmufb, NULL, 2, 0, 48, 32, 1, "   /\\-/\\\n  ( ^x^ )\n\n (_)___(_)");
+    switch (gameMode) {
+      case 0:
+        // draw badger logo
+        if((hardModeLeft == 0) && (hardModeRightOne == 0)) {
+          vmufb_paint_area(&vmufb, 8, 0, 32, 32, badger);
+        } else if((hardModeLeft < 31) && (hardModeRightOne < 31)){
+          vmufb_paint_area(&vmufb, 8, 0, 32, 32, threeVMU);
+        } else if((hardModeLeft < 61) && (hardModeRightOne < 61)) {
+          vmufb_paint_area(&vmufb, 8, 0, 32, 32, twoVMU);
+        } else {
+          vmufb_paint_area(&vmufb, 8, 0, 32, 32, oneVMU);
+        }
 
-    drawVmuPaws();
-    
+      break;
+
+      case 1:
+        // draw a star
+        switch(star_number) {
+          case 0:
+            vmufb_paint_area(&vmufb, 8, 0, 32, 32, starUp);
+          break;
+          case 1:
+            vmufb_paint_area(&vmufb, 8, 0, 32, 32, starRight);
+          break;
+          case 2:
+            vmufb_paint_area(&vmufb, 8, 0, 32, 32, starDown);
+          break;
+          case 3:
+            vmufb_paint_area(&vmufb, 8, 0, 32, 32, starLeft);
+          break;
+        }
+      break;
+
+      case 2:
+      // draw the fat playing cat
+        vmufb_print_string_into(&vmufb, NULL, 2, 0, 48, 32, 1, "   /\\-/\\\n  ( ^x^ )\n\n (_)___(_)");
+        drawVmuPaws();
+      break;
+    }
+
     for(vmu = 0; !!(dev = maple_enum_type(vmu, MAPLE_FUNC_LCD)); vmu++) {
       vmufb_present(&vmufb, dev);
     }
@@ -1508,6 +1925,31 @@ int main() {
           twoControllers = true;
         }
         
+        if(GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_TRIGGER) > 0.8) {
+          hardModeRightOne = 0;
+          hardModeLeft = hardModeLeft + 1;
+          if(hardModeLeft > 90) {
+            gameMode = 1;
+            hardModeLeft = 0;
+            hardMode = 1;
+          }
+        } else {
+          hardModeLeft = 0;
+        }
+
+        if(GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_TRIGGER) > 0.8) {
+          hardModeLeft = 0;
+          hardModeRightOne = hardModeRightOne + 1;
+          if(hardModeRightOne > 90) {
+            gameMode = 1;
+            hardModeRightOne = 0;
+            hardMode = 2;
+            twoControllers = false;
+          }
+        } else {
+          hardModeRightOne = 0;
+        }
+
       break;
       
       case 1: // game
