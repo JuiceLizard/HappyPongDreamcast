@@ -414,6 +414,7 @@ Texture2D Pc128x256 = {0};
 Texture2D O128x128 = {0};
 Texture2D N128x128 = {0};
 Texture2D G128x128 = {0};
+Texture2D pinkBackground128x64 = {0};
 
 // Les variables
 
@@ -662,8 +663,14 @@ void movePlayer() {
     player_y = player_y + player_vy;
   }
 
-// player invivible if hardMode 2
+// player invincible if hardMode 2
+/*
   if((hardMode == 2) && (ball_vx > -24)) {
+    player_y = ball_y + (ball_size / 2) - (player_h / 2);
+  }
+*/
+
+  if((hardMode == 2) && (ball_vx > -(6 + (opponent_score * 2)))) {
     player_y = ball_y + (ball_size / 2) - (player_h / 2);
   }
 
@@ -845,11 +852,16 @@ void moveOpponent() {
     opponent_y = opponent_y + opponent_vy;
   }
 
-// opponent invivible if hardMode 1
+// opponent invincible if hardMode 1
+/*
   if((hardMode == 1) && (ball_vx < 24)) {
     opponent_y = ball_y + (ball_size / 2) - (opponent_h / 2);
   }
+*/
 
+  if((hardMode == 1) && (ball_vx < (6 + (player_score * 2)))) {
+    opponent_y = ball_y + (ball_size / 2) - (opponent_h / 2);
+  }
 
 //} else if ((opponent_y + (opponent_h / 2)) < (ball_y + (ball_size / 2))) {
 
@@ -1829,6 +1841,7 @@ int main() {
   O128x128 = LoadTexture("/cd/sprites/O128x128.png");
   N128x128 = LoadTexture("/cd/sprites/N128x128.png");
   G128x128 = LoadTexture("/cd/sprites/G128x128.png");
+  pinkBackground128x64 = LoadTexture("/cd/sprites/pinkBackground128x64.png");
 
   // play the purring cat sound repeatedly
   sfx_play_data_t data = {0};
@@ -1897,7 +1910,8 @@ int main() {
     }
 
     BeginDrawing();
-    ClearBackground({255, 153, 229});
+    //ClearBackground({255, 153, 229});
+    DrawTexturePro(pinkBackground128x64, {0, 0, 80, 60}, {0, 0, 640, 480}, {0, 0}, 0, WHITE);
 
 
     switch (gameMode) {
@@ -2073,6 +2087,7 @@ int main() {
   UnloadTexture(O128x128);
   UnloadTexture(N128x128);
   UnloadTexture(G128x128);
+  UnloadTexture(pinkBackground128x64);
 
   snd_shutdown();
 
